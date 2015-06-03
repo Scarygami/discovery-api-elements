@@ -1,0 +1,31 @@
+{
+  "name": "discovery-api-elements",
+  "version": "0.0.1",
+  "authors": [
+    "Gerwin Sturm <scarygami@gmail.com>"
+  ],
+  "description": "Automatic Polymer element to access Discovery-based APIs",
+  "main": "discovery-api-elements.html",
+  "keywords": [
+    "Discovery",
+    "API",
+    "Polymer",
+    "Google"
+  ],
+  "license": "Apache 2.0",
+  "homepage": "https://github.com/Scarygami/discovery-api-elements",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.0.0",
+    "google-apis": "GoogleWebComponents/google-apis#^1.0.0"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0"
+  }
+}

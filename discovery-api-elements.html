@@ -1,0 +1,222 @@
+<!--
+`discovery-api-elements` will automatically create elements for Discovery-based APIS
+that allow accessing them declaratively.
+
+##### Example
+
+     <discovery-api-elements name="plus" version="v1"></discovery-api-elements>
+
+     <plus-activities-list user-id="+GerwinSturm" collection="public" response="{{data}}" auto></plus-activities-list>
+
+@element discovery-api-elements
+@status alpha
+@homepage https://github.com/Scarygami/discovery-api-elements/
+@demo demo/index.html
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../google-apis/google-client-loader.html">
+
+
+<dom-module id="discovery-api-elements">
+  <template>
+    <google-client-loader
+      name="discovery"
+      version="v1"
+      app-id="[[appId]]"
+      root="[[apiRoot]]"
+      on-google-api-load="_discoveryApiLoaded"></google-client-loader>
+    <google-client-loader
+      name="[[name]]"
+      version="[[version]]"
+      app-id="[[appId]]"
+      root="[[apiRoot]]"
+      on-google-api-load="_apiLoaded"></google-client-loader>
+  </template>
+</dom-module>
+
+<script>
+  (function () {
+
+    function parameterType(apiType) {
+      // TODO extend
+      switch (apiType) {
+        case "string": return String;
+        case "integer": return Number;
+      }
+      return String;
+    }
+
+    Polymer({
+      is: "discovery-api-elements",
+      properties: {
+        /**
+         * Name of the API to load, e.g. 'urlshortener'.
+         *
+         * You can find the full list of APIs on the
+         * <a href="https://developers.google.com/apis-explorer"> Google APIs
+         * Explorer</a>.
+         * @required
+         */
+        name: String,
+
+
+        /**
+         * Version of the API to load, e.g. 'v1'.
+         * @required
+         */
+        version: String,
+
+        /**
+         * App Engine application ID for loading a Google Cloud Endpoints API.
+         */
+        appId: String,
+
+        /**
+         * Root URL where to load the API from, e.g. 'http://host/apis'.
+         * For App Engine dev server this would be something like:
+         * 'http://localhost:8080/_ah/api'.
+         * Overrides 'appId' if both are specified.
+         */
+        apiRoot: String,
+
+        /**
+         * API Key for accessing the API, necessary for most APIs if you are doing
+         * unauthenticated calls
+         */
+        apiKey: String,
+
+        /**
+         * True when all elements for the specified API have been _createMethodElement
+         */
+        loaded: {
+          type: Boolean,
+          value: false,
+          readOnly: true,
+          notify: true
+        },
+
+        _apiReady: Boolean,
+        _discoveryApiReady: Boolean,
+      },
+
+      _discoveryApiLoaded: function () {
+        this._discoveryApiReady = true;
+        this._createElements();
+      },
+
+      _apiLoaded: function () {
+        this._apiReady = true;
+        this._createElements();
+      },
+
+      _createElements: function () {
+        if (!this._apiReady || !this._discoveryApiReady) return;
+
+        if (this.apiKey) {
+          gapi.client.setApiKey(this.apiKey);
+        }
+
+        gapi.client.discovery.apis.getRest({api: this.name, version: this.version}).then(function (r) {
+          if (r.result.resources) {
+            Object.keys(r.result.resources).forEach(function (resourceName) {
+              var resource = r.result.resources[resourceName];
+              if (resource.methods) {
+                Object.keys(resource.methods).forEach(function (methodName) {
+                  this._createMethodElement(resourceName, methodName, resource.methods[methodName]);
+                }.bind(this));
+              }
+            }.bind(this));
+          }
+          if (r.result.methods) {
+            Object.keys(r.result.methods).forEach(function (methodName) {
+              this._createMethodElement(null, methodName, r.result.methods[methodName]);
+            }.bind(this));
+          }
+          this._finish();
+        }.bind(this));
+      },
+
+      _createMethodElement: function (resourceName, methodName, method) {
+        var elementName = this.name + (resourceName ? "-" + resourceName : "") + "-" + methodName;
+        var callPath = gapi.client[this.name];
+        if (resourceName) { callPath = callPath[resourceName]; }
+        callPath = callPath[methodName];
+
+        // TODO: Should do default properties as behaviour (based on HTTP Method)
+        var properties = {
+          response: {
+            type: Object,
+            readOnly: true,
+            notify: true
+          },
+          auto: {
+            type: Boolean,
+            value: false
+          }
+        };
+
+        if (method.parameters) {
+          properties._parameters = {
+            type: Object,
+            value: Object.keys(method.parameters)
+          };
+          properties._requiredParameters = {
+            type: Object,
+            value: properties._parameters.value.filter(function (p) { return method.parameters[p].required; })
+          };
+          Object.keys(method.parameters).forEach(function (parameterName) {
+            var parameter = method.parameters[parameterName];
+            properties[parameterName] = {
+              type: parameterType(parameter.type),
+              observer: "_parameterChanged"
+            };
+          });
+        }
+
+        Polymer({
+          is: elementName,
+          properties: properties,
+
+          go: function () {
+            if (!this._checkParameters()) { return; }
+            callPath(this._prepareParameters()).then(function (r) {
+              console.log(r);
+              this._setResponse(r.result);
+              // TODO: fire success event
+            }.bind(this), function (e) {
+              console.log(e);
+              // TODO: fire error event
+            }.bind(this));
+          },
+
+          _checkParameters: function () {
+            // all required Parameters need to have a value before making a request
+            return this._requiredParameters.filter(function (p) { return this[p] === undefined; }.bind(this)).length === 0;
+          },
+
+          _prepareParameters: function () {
+            var params = {};
+            this._parameters.forEach(function (param) {
+              if (this[param]) {
+                params[param] = this[param];
+              }
+            }.bind(this));
+            return params;
+          },
+
+          _parameterChanged: function () {
+            this.debounce('make-request', function() {
+              if (this.auto) { this.go(); }
+            }, 300);
+          }
+        });
+      },
+
+      _finish: function () {
+        this._setLoaded(true);
+        // TODO: fire ready event
+      }
+    });
+  }());
+</script>
