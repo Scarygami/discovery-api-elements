@@ -1,0 +1,90 @@
+<script>
+  (function (global) {
+
+    global.DiscoveryApiBehaviors = global.DiscoveryApiBehaviors || {};
+
+    /** @polymerBehavior */
+    global.DiscoveryApiBehaviors.ApiRequestBehavior = {
+      properties: {
+        _apiName: String,
+        _resourceName: String,
+        _methodName: String,
+        response: {
+          type: Object,
+          readOnly: true,
+          notify: true
+        },
+        auto: {
+          type: Boolean,
+          value: false
+        }
+      },
+
+      _createRequest: function (parameters) {
+        var callPath = global.gapi.client[this._apiName];
+        if (this._resourceName) { callPath = callPath[this._resourceName]; }
+        callPath = callPath[this._methodName];
+        return callPath(parameters);
+      },
+
+      _parameterChanged: function () {
+        this.debounce('make-request', function() {
+          if (this.auto) { this.go(); }
+        }, 300);
+      },
+
+      _checkParameters: function () {
+        // all required Parameters need to have a value before making a request
+        return this._requiredParameters.filter(function (p) { return this[p] === undefined; }.bind(this)).length === 0;
+      },
+
+      _prepareParameters: function () {
+        var params = {};
+        this._parameters.forEach(function (param) {
+          if (this[param]) {
+            params[param] = this[param];
+          }
+        }.bind(this));
+        return params;
+      },
+
+      go: function () {
+        if (!this._checkParameters()) { return; }
+        this._createRequest(this._prepareParameters()).then(function (r) {
+          global.console.log(r);
+          this._setResponse(r.result);
+          // TODO: fire success event
+        }.bind(this), function (e) {
+          global.console.log(e);
+          // TODO: fire error event
+        }.bind(this));
+      },
+    };
+
+    /** @polymerBehavior */
+    global.DiscoveryApiBehaviors._ApiPostRequestBehavior = {
+      properties: {
+        body: {
+          type: Object,
+          observer: "_parameterChanged"
+        }
+      },
+
+      _prepareParameters: function () {
+        var params = global.DiscoveryApiBehaviors.ApiRequestBehavior._prepareParameters.call(this);
+
+        if (!!this.body) {
+          params.resource = this.body;
+        }
+        return params;
+      }
+    };
+
+    /** @polymerBehavior */
+    global.DiscoveryApiBehaviors.ApiPostRequestBehavior = [
+      global.DiscoveryApiBehaviors.ApiRequestBehavior,
+      global.DiscoveryApiBehaviors._ApiPostRequestBehavior
+    ];
+
+  }(this));
+</script>

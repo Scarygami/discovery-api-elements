@@ -17,6 +17,8 @@ that allow accessing them declaratively.
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../google-apis/google-client-loader.html">
 
+<link rel="import" href="discovery-api-behaviors.html">
+
 
 <dom-module id="discovery-api-elements">
   <template>
@@ -36,7 +38,9 @@ that allow accessing them declaratively.
 </dom-module>
 
 <script>
-  (function () {
+  (function (global) {
+
+    var gapi, Polymer = global.Polymer;
 
     function parameterType(apiType) {
       // TODO extend
@@ -113,6 +117,8 @@ that allow accessing them declaratively.
       _createElements: function () {
         if (!this._apiReady || !this._discoveryApiReady) return;
 
+        gapi = global.gapi;
+
         if (this.apiKey) {
           gapi.client.setApiKey(this.apiKey);
         }
@@ -139,21 +145,21 @@ that allow accessing them declaratively.
 
       _createMethodElement: function (resourceName, methodName, method) {
         var elementName = this.name + (resourceName ? "-" + resourceName : "") + "-" + methodName;
-        var callPath = gapi.client[this.name];
-        if (resourceName) { callPath = callPath[resourceName]; }
-        callPath = callPath[methodName];
+        var properties = {}, behavior;
 
-        // TODO: Should do default properties as behaviour (based on HTTP Method)
-        var properties = {
-          response: {
-            type: Object,
-            readOnly: true,
-            notify: true
-          },
-          auto: {
-            type: Boolean,
-            value: false
-          }
+        properties._apiName = {
+          type: String,
+          value: this.name
+        };
+
+        properties._resourceName = {
+          type: String,
+          value: resourceName
+        };
+
+        properties._methodName = {
+          type: String,
+          value: methodName
         };
 
         if (method.parameters) {
@@ -174,42 +180,16 @@ that allow accessing them declaratively.
           });
         }
 
+        if (method.request) {
+          behavior = global.DiscoveryApiBehaviors.ApiPostRequestBehavior;
+        } else {
+          behavior = global.DiscoveryApiBehaviors.ApiRequestBehavior;
+        }
+
         Polymer({
           is: elementName,
           properties: properties,
-
-          go: function () {
-            if (!this._checkParameters()) { return; }
-            callPath(this._prepareParameters()).then(function (r) {
-              console.log(r);
-              this._setResponse(r.result);
-              // TODO: fire success event
-            }.bind(this), function (e) {
-              console.log(e);
-              // TODO: fire error event
-            }.bind(this));
-          },
-
-          _checkParameters: function () {
-            // all required Parameters need to have a value before making a request
-            return this._requiredParameters.filter(function (p) { return this[p] === undefined; }.bind(this)).length === 0;
-          },
-
-          _prepareParameters: function () {
-            var params = {};
-            this._parameters.forEach(function (param) {
-              if (this[param]) {
-                params[param] = this[param];
-              }
-            }.bind(this));
-            return params;
-          },
-
-          _parameterChanged: function () {
-            this.debounce('make-request', function() {
-              if (this.auto) { this.go(); }
-            }, 300);
-          }
+          behaviors: [behavior]
         });
       },
 
@@ -218,5 +198,5 @@ that allow accessing them declaratively.
         // TODO: fire ready event
       }
     });
-  }());
+  }(this));
 </script>
