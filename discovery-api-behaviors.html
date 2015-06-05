@@ -50,12 +50,10 @@
       go: function () {
         if (!this._checkParameters()) { return; }
         this._createRequest(this._prepareParameters()).then(function (r) {
-          global.console.log(r);
           this._setResponse(r.result);
-          // TODO: fire success event
+          this.fire("success", r.result);
         }.bind(this), function (e) {
-          global.console.log(e);
-          // TODO: fire error event
+          this.fire("error", e.result.error);
         }.bind(this));
       },
     };
@@ -71,9 +69,9 @@
       _prepareParameters: function () {
         var params = global.DiscoveryApiBehaviors.ApiRequestBehavior._prepareParameters.call(this);
 
-        if (!!this.body) {
-          params.resource = this.body;
-        }
+        // Add request body to the parameters
+        params.resource = this.body || {};
+
         return params;
       }
     };

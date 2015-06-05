@@ -4,9 +4,12 @@ that allow accessing them declaratively.
 
 ##### Example
 
-     <discovery-api-elements name="plus" version="v1"></discovery-api-elements>
+    <discovery-api-elements name="plus" version="v1"></discovery-api-elements>
 
-     <plus-activities-list user-id="+GerwinSturm" collection="public" response="{{data}}" auto></plus-activities-list>
+    <plus-activities-list
+      user-id="+GerwinSturm"
+      collection="public"
+      response="{{data}}" auto></plus-activities-list>
 
 @element discovery-api-elements
 @status alpha
@@ -91,6 +94,14 @@ that allow accessing them declaratively.
         apiKey: String,
 
         /**
+         * Descriptor of generated elements to generate docs from
+         */
+        elements: {
+          type: Object,
+          notify: true
+        },
+
+        /**
          * True when all elements for the specified API have been created
          */
         loaded: {
@@ -116,6 +127,8 @@ that allow accessing them declaratively.
 
       _createElements: function () {
         if (!this._apiReady || !this._discoveryApiReady) return;
+
+        this.elements = [];
 
         gapi = global.gapi;
 
@@ -145,7 +158,7 @@ that allow accessing them declaratively.
 
       _createMethodElement: function (resourceName, methodName, method) {
         var elementName = this.name + (resourceName ? "-" + resourceName : "") + "-" + methodName;
-        var properties = {}, behavior;
+        var properties = {}, docProperties = [], behavior;
 
         properties._apiName = {
           type: String,
@@ -177,25 +190,112 @@ that allow accessing them declaratively.
               type: parameterType(parameter.type),
               observer: "_parameterChanged"
             };
+
+            docProperties.push({
+              name: parameterName,
+              published: true,
+              type: parameter.type,
+              desc: parameter.description
+            });
           });
         }
 
         if (method.request) {
           behavior = global.DiscoveryApiBehaviors.ApiPostRequestBehavior;
+          docProperties.push({
+            name: "body",
+            published: true,
+            type: "Object",
+            desc: "Request Body: " + method.request.$ref
+          });
         } else {
           behavior = global.DiscoveryApiBehaviors.ApiRequestBehavior;
         }
+
+        docProperties.push({
+          name: "auto",
+          published: true,
+          type: "boolean",
+          desc: "Automatically execute the request if one of the parameter changes."
+        });
+        docProperties.push({
+          name: "response",
+          published: true,
+          type: "Object",
+          desc: "The result of the latest successful request."
+        });
+
+        docProperties.push({
+          name: "_apiName",
+          private: true,
+          type: "string"
+        });
+        docProperties.push({
+          name: "_resourceName",
+          private: true,
+          type: "string"
+        });
+        docProperties.push({
+          name: "_methodName",
+          private: true,
+          type: "string"
+        });
+        docProperties.push({
+          name: "go",
+          type: "Function",
+          function: true,
+          desc: "Execute the request."
+        });
+
+        docProperties.push({
+          name: "_createRequest",
+          type: "Function",
+          function: true,
+          private: true
+        });
+
+        docProperties.push({
+          name: "_parameterChanged",
+          type: "Function",
+          function: true,
+          private: true
+        });
+
+        docProperties.push({
+          name: "_checkParameters",
+          type: "Function",
+          function: true,
+          private: true
+        });
+
+        docProperties.push({
+          name: "_prepareParameters",
+          type: "Function",
+          function: true,
+          private: true
+        });
 
         Polymer({
           is: elementName,
           properties: properties,
           behaviors: [behavior]
         });
+
+        this.push('elements', {
+          is: elementName,
+          desc: method.description,
+          properties: docProperties
+        });
       },
 
       _finish: function () {
         this._setLoaded(true);
-        // TODO: fire ready event
+
+        /**
+         * Fired when all the elements have been created and are ready to be used.
+         * @event elements-ready
+         */
+        this.fire('elements-ready');
       }
     });
   }(this));
