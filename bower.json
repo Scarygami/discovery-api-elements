@@ -24,6 +24,7 @@
   "dependencies": {
     "polymer": "Polymer/polymer#^1.0.0",
     "google-apis": "GoogleWebComponents/google-apis#^1.0.0",
-    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0"
+    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
+    "hydrolysis": "Polymer/hydrolysis#1.12"
   }
 }
