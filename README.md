@@ -1,2 +1,7 @@
 # discovery-api-elements
-Work in progress... no idea if this will work out the way I expect it to
+
+Automatically generated Polymer elements to access Google Apis
+
+WIP
+
+[Documentation](https://scarygami.github.io/discovery-api-elements/components/discovery-api-elements/)
