@@ -3,7 +3,6 @@
 
     global.DiscoveryApiBehaviors = global.DiscoveryApiBehaviors || {};
 
-    /** @polymerBehavior */
     global.DiscoveryApiBehaviors.ApiRequestBehavior = {
       properties: {
         _apiName: String,
@@ -61,7 +60,6 @@
       },
     };
 
-    /** @polymerBehavior */
     global.DiscoveryApiBehaviors._ApiPostRequestBehavior = {
       properties: {
         body: {
@@ -80,7 +78,6 @@
       }
     };
 
-    /** @polymerBehavior */
     global.DiscoveryApiBehaviors.ApiPostRequestBehavior = [
       global.DiscoveryApiBehaviors.ApiRequestBehavior,
       global.DiscoveryApiBehaviors._ApiPostRequestBehavior
