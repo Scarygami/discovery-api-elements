@@ -1,0 +1,223 @@
+<link rel="import" href="../../polymer/polymer.html">
+
+<link rel="import" href="../discovery-api-elements.html">
+<link rel="import" href="../../iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../../paper-header-panel/paper-header-panel.html">
+<link rel="import" href="../../paper-toolbar/paper-toolbar.html">
+<link rel="import" href="../../iron-icons/iron-icons.html">
+<link rel="import" href="../../paper-button/paper-button.html">
+<link rel="import" href="../../paper-material/paper-material.html">
+<link rel="import" href="../../google-signin/google-signin.html">
+
+<dom-module id="tic-tac-toe">
+  <style>
+    :host {
+      @apply(--layout-fit);
+      font-family: 'RobotoDraft','Roboto',arial,sans-serif;
+    }
+
+    paper-toolbar [title] {
+      font-weight: bold;
+      font-size: 1.2em;
+      @apply(--layout-flex);
+    }
+
+    main {
+      padding: 10px;
+    }
+
+    .user {
+      @apply(--layout-horizontal);
+      @apply(--layout-center);
+    }
+
+    .user img {
+      height: 40px;
+      width: 40px;
+      margin-left: 10px;
+      margin-right: 10px;
+      border-radius: 50%;
+    }
+
+    paper-material {
+      padding: 5px 10px;
+      margin-bottom: 20px;
+    }
+
+    paper-material header {
+      margin-bottom: 5px;
+      border-bottom: 1px solid #CCC;
+      font-size: 1.2em;
+    }
+
+    #board {
+      min-width: 310px;
+      max-width: 310px;
+      width: 310px;
+      margin: auto;
+      @apply(--layout-horizontal);
+      @apply(--layout-center-center);
+      @apply(--layout-wrap);
+    }
+
+    .slot {
+      width: 100px;
+      height: 100px;
+      border: 1px solid black;
+      margin: 0;
+      @apply(--layout-horizontal);
+      @apply(--layout-center-center);
+    }
+
+  </style>
+  <template>
+    <discovery-api-elements
+      name="tictactoe"
+      version="v1"
+      app-id="dart-endpoints"
+      loaded="{{elementsReady}}"
+      ></discovery-api-elements>
+
+    <paper-header-panel>
+      <paper-toolbar>
+        <span title flex>polymer-tic-tac-toe</span>
+        <div hidden$="[[!signedIn]]" class="user">
+          <span>[[user.name]]</span>
+          <img src$="[[user.image]]">
+        </div>
+        <google-signin
+          client-id="390037016754-ip34lpdqk9m0ovn1nal65h61s5jiknut.apps.googleusercontent.com"
+          scopes="email profile"
+          signed-in="{{signedIn}}"></google-signin>
+      </paper-toolbar>
+
+      <main>
+        <div hidden$="[[signedIn]]">
+          <h1>Please sign in to play</h1>
+        </div>
+
+        <div hidden$="[[!signedIn]]">
+          <paper-material elevation="2">
+            <tictactoe-board-getmove
+              id="moveRequest"
+              body="[[requestBody(board, board.*)]]"
+              response="{{computerMove}}"><tictactoe-board-getmove>
+
+            <div id="board">
+              <template is="dom-repeat" items="[[items(board, board.*)]]">
+                <paper-button class="slot" on-tap="move" disabled$="[[slotDisabled(item, playerMove)]]"><span>{{item}}</span></paper-button>
+              </template>
+            </div>
+          </paper-material>
+
+          <tictactoe-scores-list response="{{scores}}" id="scoresRequest"></tictactoe-scores-list>
+          <paper-material elevation="2">
+            <header>Recent Games</header>
+            <template is="dom-repeat" items="[[scores.items]]">
+              <div><span>[[formatDate(item.played)]]</span> - <span>[[item.outcome]]</span></div>
+            </template>
+          </paper-material>
+        </div>
+      </main>
+    </paper-header-panel>
+  </template>
+</dom-module>
+
+<script>
+  (function () {
+    Polymer({
+      is: "tic-tac-toe",
+
+      properties: {
+        signedIn: {
+          type: Boolean,
+          observer: 'loadHandler'
+        },
+        elementsReady: {
+          type: Boolean,
+          observer: 'loadHandler'
+        },
+        user: Object,
+        scores: Object,
+        board: Array,
+        playerMove: Boolean,
+        computerMove: {
+          type: Object,
+          observer: 'computerMoved'
+        }
+      },
+
+      observers: [
+        'boardChanged(board.*)'
+      ],
+
+      loadHandler: function () {
+        if (this.signedIn && this.elementsReady) {
+          var profile = gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile();
+          this.user = {
+            name: profile.getName(),
+            image: profile.getImageUrl()
+          };
+          this.initialise();
+        } else {
+          this.user = undefined;
+          this.scores = undefined;
+        }
+      },
+
+      initialise: function () {
+        this.$.scoresRequest.go();
+        this.board = ['-', '-', '-', '-', '-', '-', '-', '-', '-'];
+        this.playerMove = true;
+      },
+
+      formatDate: function (date) {
+        return date.substr(0,10) + " " + date.substr(11,5);
+      },
+
+      slotDisabled: function (value, playerMove) {
+        return !playerMove || (value !== '-');
+      },
+
+      move: function (e) {
+        if (!this.playerMove) { return; }
+        e.model.item = 'X';
+        this.set('board.' + e.model.index, 'X');
+        this.notifyPath('board.' + e.model.index, 'X');
+      },
+
+      boardChanged: function (e) {
+        if (e.path !== 'board') {
+          if (this.playerMove) {
+            this.playerMove = false;
+            this.$.moveRequest.go();
+          } else {
+            var changed = e.path.substring(e.path.indexOf('.') + 1);
+            var button = (Polymer.dom(this.$.board).querySelectorAll("paper-button")[changed]);
+            Polymer.dom(button.root).querySelector("paper-ripple").simulatedRipple();
+            this.playerMove = true;
+          }
+        }
+      },
+
+      computerMoved: function (move) {
+        var slots = move.state.split('');
+        for (var i = 0; i < slots.length; i++) {
+          if (slots[i] !== this.board[i]) {
+            this.set('board.' + i, slots[i]);
+            this.notifyPath('board', this.board);
+          }
+        }
+      },
+
+      items: function (board) {
+        console.log(board);
+        return board;
+      },
+
+      requestBody: function (board) {
+        return {state: this.board.join('')};
+      }
+    });
+  }());
+</script>

@@ -19,16 +19,16 @@ that allow accessing them declaratively.
 
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../google-apis/google-client-loader.html">
+<link rel="import" href="../iron-ajax/iron-ajax.html">
 <link rel="import" href="discovery-api-behaviors.html">
 
 <dom-module id="discovery-api-elements">
   <template>
-    <google-client-loader
-      name="discovery"
-      version="v1"
-      app-id="[[appId]]"
-      root="[[apiRoot]]"
-      on-google-api-load="_discoveryApiLoaded"></google-client-loader>
+    <iron-ajax
+      auto
+      url="{{_discoveryUrl(name, version, appId, apiRoot)}}"
+      handle-as="json"
+      last-response="{{_discoveryDoc}}"></iron-ajax>
     <google-client-loader
       name="[[name]]"
       version="[[version]]"
@@ -75,7 +75,10 @@ that allow accessing them declaratively.
         /**
          * App Engine application ID for loading a Google Cloud Endpoints API.
          */
-        appId: String,
+        appId: {
+          type: String,
+          value: ""
+        },
 
         /**
          * Root URL where to load the API from, e.g. 'http://host/apis'.
@@ -83,7 +86,10 @@ that allow accessing them declaratively.
          * 'http://localhost:8080/_ah/api'.
          * Overrides 'appId' if both are specified.
          */
-        apiRoot: String,
+        apiRoot: {
+          type: String,
+          value: ""
+        },
 
         /**
          * API Key for accessing the API, necessary for most APIs if you are doing
@@ -110,11 +116,24 @@ that allow accessing them declaratively.
         },
 
         _apiReady: Boolean,
-        _discoveryApiReady: Boolean,
+        _discoveryDoc: {
+          type: Object,
+          observer: "_discoveryDocLoaded"
+        }
       },
 
-      _discoveryApiLoaded: function () {
-        this._discoveryApiReady = true;
+      _discoveryUrl: function (name, version, appId, apiRoot) {
+        var url = "/discovery/v1/apis/" + name + "/" + version + "/rest";
+        if (appId) {
+          return "https://" + appId + ".appspot.com/_ah/api" + url;
+        }
+        if (apiRoot) {
+          return apiRoot + url;
+        }
+        return "https://www.googleapis.com" + url;
+      },
+
+      _discoveryDocLoaded: function () {
         this._createElements();
       },
 
@@ -124,7 +143,7 @@ that allow accessing them declaratively.
       },
 
       _createElements: function () {
-        if (!this._apiReady || !this._discoveryApiReady) return;
+        if (!this._apiReady || !this._discoveryDoc) return;
 
         this.elements = [];
 
@@ -134,24 +153,22 @@ that allow accessing them declaratively.
           gapi.client.setApiKey(this.apiKey);
         }
 
-        gapi.client.discovery.apis.getRest({api: this.name, version: this.version}).then(function (r) {
-          if (r.result.resources) {
-            Object.keys(r.result.resources).forEach(function (resourceName) {
-              var resource = r.result.resources[resourceName];
-              if (resource.methods) {
-                Object.keys(resource.methods).forEach(function (methodName) {
-                  this._createMethodElement(resourceName, methodName, resource.methods[methodName]);
-                }.bind(this));
-              }
-            }.bind(this));
-          }
-          if (r.result.methods) {
-            Object.keys(r.result.methods).forEach(function (methodName) {
-              this._createMethodElement(null, methodName, r.result.methods[methodName]);
-            }.bind(this));
-          }
-          this._finish();
-        }.bind(this));
+        if (this._discoveryDoc.resources) {
+          Object.keys(this._discoveryDoc.resources).forEach(function (resourceName) {
+            var resource = this._discoveryDoc.resources[resourceName];
+            if (resource.methods) {
+              Object.keys(resource.methods).forEach(function (methodName) {
+                this._createMethodElement(resourceName, methodName, resource.methods[methodName]);
+              }.bind(this));
+            }
+          }.bind(this));
+        }
+        if (this._discoveryDoc.methods) {
+          Object.keys(this._discoveryDoc.methods).forEach(function (methodName) {
+            this._createMethodElement(null, methodName, this._discoveryDoc.methods[methodName]);
+          }.bind(this));
+        }
+        this._finish();
       },
 
       _createMethodElement: function (resourceName, methodName, method) {
@@ -175,11 +192,11 @@ that allow accessing them declaratively.
 
         if (method.parameters) {
           properties._parameters = {
-            type: Object,
+            type: Array,
             value: Object.keys(method.parameters)
           };
           properties._requiredParameters = {
-            type: Object,
+            type: Array,
             value: properties._parameters.value.filter(function (p) { return method.parameters[p].required; })
           };
           Object.keys(method.parameters).forEach(function (parameterName) {

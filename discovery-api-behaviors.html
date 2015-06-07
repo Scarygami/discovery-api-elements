@@ -34,16 +34,19 @@
 
       _checkParameters: function () {
         // all required Parameters need to have a value before making a request
+        if (!this._requiredParameters) { return true; }
         return this._requiredParameters.filter(function (p) { return this[p] === undefined; }.bind(this)).length === 0;
       },
 
       _prepareParameters: function () {
         var params = {};
-        this._parameters.forEach(function (param) {
-          if (this[param]) {
-            params[param] = this[param];
-          }
-        }.bind(this));
+        if (this._parameters) {
+          this._parameters.forEach(function (param) {
+            if (this[param]) {
+              params[param] = this[param];
+            }
+          }.bind(this));
+        }
         return params;
       },
 
