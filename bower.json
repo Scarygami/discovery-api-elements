@@ -1,6 +1,6 @@
 {
   "name": "discovery-api-elements",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "authors": [
     "Gerwin Sturm <scarygami@gmail.com>"
   ],
@@ -23,7 +23,7 @@
   ],
   "dependencies": {
     "polymer": "Polymer/polymer#^1.0.0",
-    "google-apis": "GoogleWebComponents/google-apis#^1.0.0",
+    "google-apis": "GoogleWebComponents/google-apis#^1.0.1",
     "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
     "iron-ajax": "PolymerElements/iron-ajax#^1.0.0"
   },
