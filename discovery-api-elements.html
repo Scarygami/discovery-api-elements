@@ -46,14 +46,14 @@ that allow accessing them declaratively.
     function parameterType(apiType) {
       // TODO extend
       switch (apiType) {
-        case "string": return String;
-        case "integer": return Number;
+        case 'string': return String;
+        case 'integer': return Number;
       }
       return String;
     }
 
     Polymer({
-      is: "discovery-api-elements",
+      is: 'discovery-api-elements',
       properties: {
         /**
          * Name of the API to load, e.g. 'urlshortener'.
@@ -77,7 +77,7 @@ that allow accessing them declaratively.
          */
         appId: {
           type: String,
-          value: ""
+          value: ''
         },
 
         /**
@@ -88,7 +88,7 @@ that allow accessing them declaratively.
          */
         apiRoot: {
           type: String,
-          value: ""
+          value: ''
         },
 
         /**
@@ -118,19 +118,19 @@ that allow accessing them declaratively.
         _apiReady: Boolean,
         _discoveryDoc: {
           type: Object,
-          observer: "_discoveryDocLoaded"
+          observer: '_discoveryDocLoaded'
         }
       },
 
       _discoveryUrl: function (name, version, appId, apiRoot) {
-        var url = "/discovery/v1/apis/" + name + "/" + version + "/rest";
+        var url = '/discovery/v1/apis/' + name + '/' + version + '/rest';
         if (appId) {
-          return "https://" + appId + ".appspot.com/_ah/api" + url;
+          return 'https://' + appId + '.appspot.com/_ah/api' + url;
         }
         if (apiRoot) {
           return apiRoot + url;
         }
-        return "https://www.googleapis.com" + url;
+        return 'https://www.googleapis.com' + url;
       },
 
       _discoveryDocLoaded: function () {
@@ -172,7 +172,7 @@ that allow accessing them declaratively.
       },
 
       _createMethodElement: function (resourceName, methodName, method) {
-        var elementName = this.name + (resourceName ? "-" + resourceName : "") + "-" + methodName;
+        var elementName = this.name + (resourceName ? '-' + resourceName : '') + '-' + methodName;
         var properties = {}, docProperties = [], behavior;
 
         properties._apiName = {
@@ -203,7 +203,7 @@ that allow accessing them declaratively.
             var parameter = method.parameters[parameterName];
             properties[parameterName] = {
               type: parameterType(parameter.type),
-              observer: "_parameterChanged"
+              observer: '_parameterChanged'
             };
 
             docProperties.push({
@@ -218,74 +218,74 @@ that allow accessing them declaratively.
         if (method.request) {
           behavior = global.DiscoveryApiBehaviors.ApiPostRequestBehavior;
           docProperties.push({
-            name: "body",
+            name: 'body',
             published: true,
-            type: "Object",
-            desc: "Request Body: " + method.request.$ref
+            type: 'Object',
+            desc: 'Request Body: ' + method.request.$ref
           });
         } else {
           behavior = global.DiscoveryApiBehaviors.ApiRequestBehavior;
         }
 
         docProperties.push({
-          name: "auto",
+          name: 'auto',
           published: true,
-          type: "boolean",
-          desc: "Automatically execute the request if one of the parameter changes."
+          type: 'boolean',
+          desc: 'Automatically execute the request if one of the parameter changes.'
         });
         docProperties.push({
-          name: "response",
+          name: 'response',
           published: true,
-          type: "Object",
-          desc: "The result of the latest successful request."
+          type: 'Object',
+          desc: 'The result of the latest successful request.'
         });
 
         docProperties.push({
-          name: "_apiName",
+          name: '_apiName',
           private: true,
-          type: "string"
+          type: 'string'
         });
         docProperties.push({
-          name: "_resourceName",
+          name: '_resourceName',
           private: true,
-          type: "string"
+          type: 'string'
         });
         docProperties.push({
-          name: "_methodName",
+          name: '_methodName',
           private: true,
-          type: "string"
+          type: 'string'
         });
         docProperties.push({
-          name: "go",
-          type: "Function",
+          name: 'go',
+          type: 'Function',
           function: true,
-          desc: "Execute the request."
+          desc: 'Execute the request.'
         });
 
         docProperties.push({
-          name: "_createRequest",
-          type: "Function",
+          name: '_createRequest',
+          type: 'Function',
           function: true,
           private: true
         });
 
         docProperties.push({
-          name: "_parameterChanged",
-          type: "Function",
+          name: '_parameterChanged',
+          type: 'Function',
           function: true,
           private: true
         });
 
         docProperties.push({
-          name: "_checkParameters",
-          type: "Function",
+          name: '_checkParameters',
+          type: 'Function',
           function: true,
           private: true
         });
 
         docProperties.push({
-          name: "_prepareParameters",
-          type: "Function",
+          name: '_prepareParameters',
+          type: 'Function',
           function: true,
           private: true
         });
