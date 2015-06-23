@@ -141,10 +141,14 @@ that allow accessing them declaratively.
         if (!!api) {
           if (api.loaded) {
             // Elements have already been created by another element
+            this.elements = api.elements;
             this._finish();
           } else {
             // Elements are already being created by another element
-            api.addEventListener('elements-ready', this._finish.bind(this));
+            api.addEventListener('elements-ready', function () {
+              this.elements = api.elements;
+              this._finish();
+            }.bind(this));
           }
         } else {
           _apis[this.name + '_' + this.version] = this;
