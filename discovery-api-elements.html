@@ -24,24 +24,26 @@ that allow accessing them declaratively.
 
 <dom-module id="discovery-api-elements">
   <template>
-    <iron-ajax
-      auto
-      url="{{_discoveryUrl(name, version, appId, apiRoot)}}"
-      handle-as="json"
-      last-response="{{_discoveryDoc}}"></iron-ajax>
-    <google-client-loader
-      name="[[name]]"
-      version="[[version]]"
-      app-id="[[appId]]"
-      api-root="[[apiRoot]]"
-      on-google-api-load="_apiLoaded"></google-client-loader>
+    <template is="dom-if" if="{{_load}}">
+      <iron-ajax
+        auto
+        url="{{_discoveryUrl(name, version, appId, apiRoot)}}"
+        handle-as="json"
+        last-response="{{_discoveryDoc}}"></iron-ajax>
+      <google-client-loader
+        name="[[name]]"
+        version="[[version]]"
+        app-id="[[appId]]"
+        api-root="[[apiRoot]]"
+        on-google-api-load="_apiLoaded"></google-client-loader>
+    </template>
   </template>
 </dom-module>
 
 <script>
-  (function (global) {
+  (function () {
 
-    var gapi, Polymer = global.Polymer;
+    var _apis = {};
 
     function parameterType(apiType) {
       // TODO extend
@@ -50,6 +52,12 @@ that allow accessing them declaratively.
         case 'integer': return Number;
       }
       return String;
+    }
+
+    function camelToDashCase(camel) {
+      return camel.replace(/([a-z][A-Z])/g, function (g) {
+        return g[0] + '-' + g[1].toLowerCase();
+      });
     }
 
     Polymer({
@@ -116,9 +124,31 @@ that allow accessing them declaratively.
         },
 
         _apiReady: Boolean,
+        _load: {
+          type: Boolean,
+          value: false
+        },
         _discoveryDoc: {
           type: Object,
           observer: '_discoveryDocLoaded'
+        },
+        _baseBehavior: Object,
+        _generalProperties: Array
+      },
+
+      attached: function () {
+        var api = _apis[this.name + '_' + this.version];
+        if (!!api) {
+          if (api.loaded) {
+            // Elements have already been created by another element
+            this._finish();
+          } else {
+            // Elements are already being created by another element
+            api.addEventListener('elements-ready', this._finish.bind(this));
+          }
+        } else {
+          _apis[this.name + '_' + this.version] = this;
+          this._load = true;
         }
       },
 
@@ -143,37 +173,79 @@ that allow accessing them declaratively.
       },
 
       _createElements: function () {
-        if (!this._apiReady || !this._discoveryDoc) return;
+        if (!this._apiReady || !this._discoveryDoc) { return; }
 
         this.elements = [];
-
-        gapi = global.gapi;
 
         if (this.apiKey) {
           gapi.client.setApiKey(this.apiKey);
         }
 
+        this._baseBehavior = {
+          properties: {}
+        };
+        this._generalProperties = [];
+
+        if (this._discoveryDoc.parameters) {
+          Object.keys(this._discoveryDoc.parameters).forEach(
+            function (parameterName) {
+              var parameter = this._discoveryDoc.parameters[parameterName];
+              this._baseBehavior.properties[parameterName] = {
+                type: parameterType(parameter.type),
+                observer: '_parameterChanged'
+              };
+
+              this._generalProperties.push({
+                name: parameterName,
+                published: true,
+                type: parameter.type,
+                desc: parameter.description
+              });
+            }.bind(this)
+          );
+        }
+
         if (this._discoveryDoc.resources) {
-          Object.keys(this._discoveryDoc.resources).forEach(function (resourceName) {
-            var resource = this._discoveryDoc.resources[resourceName];
-            if (resource.methods) {
-              Object.keys(resource.methods).forEach(function (methodName) {
-                this._createMethodElement(resourceName, methodName, resource.methods[methodName]);
-              }.bind(this));
-            }
-          }.bind(this));
+          Object.keys(this._discoveryDoc.resources).forEach(
+            function (resourceName) {
+              var resource = this._discoveryDoc.resources[resourceName];
+              if (resource.methods) {
+                Object.keys(resource.methods).forEach(function (methodName) {
+                  this._createMethodElement(
+                    resourceName,
+                    methodName,
+                    resource.methods[methodName]
+                  );
+                }.bind(this));
+              }
+            }.bind(this)
+          );
         }
         if (this._discoveryDoc.methods) {
-          Object.keys(this._discoveryDoc.methods).forEach(function (methodName) {
-            this._createMethodElement(null, methodName, this._discoveryDoc.methods[methodName]);
-          }.bind(this));
+          Object.keys(this._discoveryDoc.methods).forEach(
+            function (methodName) {
+              this._createMethodElement(
+                null,
+                methodName,
+                this._discoveryDoc.methods[methodName]
+              );
+            }.bind(this)
+          );
         }
         this._finish();
       },
 
       _createMethodElement: function (resourceName, methodName, method) {
-        var elementName = this.name + (resourceName ? '-' + resourceName : '') + '-' + methodName;
-        var properties = {}, docProperties = [], behavior;
+        var properties = {};
+        var docProperties = [];
+        var behavior;
+
+        var elementName = this.name;
+        if (!!resourceName) {
+          elementName = elementName + '-' + resourceName;
+        }
+        elementName = elementName + '-' + methodName;
+        elementName = camelToDashCase(elementName);
 
         properties._apiName = {
           type: String,
@@ -197,7 +269,9 @@ that allow accessing them declaratively.
           };
           properties._requiredParameters = {
             type: Array,
-            value: properties._parameters.value.filter(function (p) { return method.parameters[p].required; })
+            value: properties._parameters.value.filter(
+              function (p) { return method.parameters[p].required; }
+            )
           };
           Object.keys(method.parameters).forEach(function (parameterName) {
             var parameter = method.parameters[parameterName];
@@ -216,7 +290,7 @@ that allow accessing them declaratively.
         }
 
         if (method.request) {
-          behavior = global.DiscoveryApiBehaviors.ApiPostRequestBehavior;
+          behavior = window.DiscoveryApiBehaviors.ApiPostRequestBehavior;
           docProperties.push({
             name: 'body',
             published: true,
@@ -224,14 +298,15 @@ that allow accessing them declaratively.
             desc: 'Request Body: ' + method.request.$ref
           });
         } else {
-          behavior = global.DiscoveryApiBehaviors.ApiRequestBehavior;
+          behavior = window.DiscoveryApiBehaviors.ApiRequestBehavior;
         }
 
         docProperties.push({
           name: 'auto',
           published: true,
           type: 'boolean',
-          desc: 'Automatically execute the request if one of the parameter changes.'
+          desc: 'Automatically execute the request ' +
+                'if one of the parameter changes.'
         });
         docProperties.push({
           name: 'response',
@@ -293,13 +368,13 @@ that allow accessing them declaratively.
         Polymer({
           is: elementName,
           properties: properties,
-          behaviors: [behavior]
+          behaviors: [behavior, this._baseBehavior]
         });
 
         this.push('elements', {
           is: elementName,
           desc: method.description,
-          properties: docProperties
+          properties: docProperties.concat(this._generalProperties)
         });
       },
 
@@ -313,5 +388,5 @@ that allow accessing them declaratively.
         this.fire('elements-ready');
       }
     });
-  }(this));
+  }());
 </script>

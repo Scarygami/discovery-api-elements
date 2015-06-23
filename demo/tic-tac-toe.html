@@ -130,176 +130,200 @@
       </main>
     </paper-header-panel>
   </template>
-</dom-module>
 
-<script>
-  (function () {
+  <script>
+    (function () {
 
-    var gameStates = ['', 'WON', 'LOST', 'TIE'];
-    var NOT_DONE = 0;
-    var WON = 1;
-    var LOST = 2;
-    var TIE = 3;
+      var gameStates = ['', 'WON', 'LOST', 'TIE'];
+      var NOT_DONE = 0;
+      var WON = 1;
+      var LOST = 2;
+      var TIE = 3;
 
-    Polymer({
-      is: "tic-tac-toe",
+      Polymer({
+        is: 'tic-tac-toe',
 
-      properties: {
-        signedIn: {
-          type: Boolean,
-          observer: 'loadHandler'
+        properties: {
+          signedIn: {
+            type: Boolean,
+            observer: 'loadHandler'
+          },
+          elementsReady: {
+            type: Boolean,
+            observer: 'loadHandler'
+          },
+          user: Object,
+          scores: Object,
+          board: Array,
+          playerMove: Boolean,
+          computerMove: {
+            type: Object,
+            observer: 'computerMoved'
+          },
+          gameState: Number
         },
-        elementsReady: {
-          type: Boolean,
-          observer: 'loadHandler'
-        },
-        user: Object,
-        scores: Object,
-        board: Array,
-        playerMove: Boolean,
-        computerMove: {
-          type: Object,
-          observer: 'computerMoved'
-        },
-        gameState: Number
-      },
 
-      observers: [
-        'boardChanged(board.*)'
-      ],
+        observers: [
+          'boardChanged(board.*)'
+        ],
 
-      loadHandler: function () {
-        if (this.signedIn && this.elementsReady) {
-          var profile = gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile();
-          this.user = {
-            name: profile.getName(),
-            image: profile.getImageUrl()
-          };
-          this.initialise();
-        } else {
-          this.user = undefined;
-          this.scores = undefined;
-        }
-      },
-
-      initialise: function () {
-        this.getScores();
-        this.resetGame();
-      },
-
-      getScores: function () {
-        this.$.scoresRequest.go();
-      },
-
-      resetGame: function () {
-        this.board = [
-          {value: '-'},
-          {value: '-'},
-          {value: '-'},
-          {value: '-'},
-          {value: '-'},
-          {value: '-'},
-          {value: '-'},
-          {value: '-'},
-          {value: '-'}
-        ];
-        this.playerMove = true;
-      },
-
-      formatDate: function (date) {
-        return date.substr(0,10) + " " + date.substr(11,5);
-      },
-
-      slotDisabled: function (value, playerMove, gameState) {
-        return !playerMove || (value !== '-') || (gameState > 0);
-      },
-
-      move: function (e) {
-        this.set('board.' + e.model.index + '.value', 'X');
-      },
-
-      getBoardIndex: function (path) {
-        var index = path.substring(path.indexOf('.') + 1);
-        index = index.substring(0, index.indexOf('.'));
-        return index;
-      },
-
-      checkRowVictory: function (slot1, slot2, slot3) {
-        if (slot1 === slot2 && slot1 === slot3) {
-          if (slot1 === 'X') return WON;
-          if (slot1 === 'O') return LOST;
-        }
-        return NOT_DONE;
-      },
-
-      computeGameState: function (board) {
-        var state, i;
-        // rows
-        for (i = 0; i < 3; i++) {
-          state = this.checkRowVictory(board[i * 3].value, board[i * 3 + 1].value, board[i * 3 + 2].value);
-          if (state !== NOT_DONE) { return state; }
-        }
-
-        // columns
-        for (i = 0; i < 3; i++) {
-          state = this.checkRowVictory(board[i].value, board[i + 3].value, board[i + 6].value);
-          if (state !== NOT_DONE) { return state; }
-        }
-
-        // first diagonal
-        state = this.checkRowVictory(board[0].value, board[4].value, board[8].value);
-        if (state !== NOT_DONE) { return state; }
-
-        // second diagonal
-        state = this.checkRowVictory(board[2].value, board[4].value, board[6].value);
-        if (state !== NOT_DONE) { return state; }
-
-        if (board.filter(function (slot) { return (slot.value === '-');}).length === 0) {
-          return TIE;
-        }
-
-        return NOT_DONE;
-      },
-
-      showGameState: function (gameState) {
-        return gameStates[gameState];
-      },
-
-      scoreInsertRequest: function (gameState) {
-        return {outcome: gameStates[gameState]};
-      },
-
-      boardChanged: function (e) {
-        this.gameState = this.computeGameState(this.board);
-        if (this.gameState !== NOT_DONE) {
-          this.$.scoreRequest.go();
-          return;
-        }
-        if (e.path !== 'board') {
-          if (this.playerMove) {
-            this.playerMove = false;
-            this.$.moveRequest.go();
+        loadHandler: function () {
+          if (this.signedIn && this.elementsReady) {
+            var profile = gapi.auth2.getAuthInstance()
+                          .currentUser.get().getBasicProfile();
+            this.user = {
+              name: profile.getName(),
+              image: profile.getImageUrl()
+            };
+            this.initialise();
           } else {
-            var changed = this.getBoardIndex(e.path);
-            var button = (Polymer.dom(this.$.board).querySelectorAll("paper-button")[changed]);
-            Polymer.dom(button.root).querySelector("paper-ripple").simulatedRipple();
-            this.playerMove = true;
+            this.user = undefined;
+            this.scores = undefined;
           }
-        }
-      },
+        },
 
-      computerMoved: function (move) {
-        var slots = move.state.split('');
-        for (var i = 0; i < slots.length; i++) {
-          if (slots[i] !== this.board[i].value) {
-            this.set('board.' + i + '.value', slots[i]);
+        initialise: function () {
+          this.getScores();
+          this.resetGame();
+        },
+
+        getScores: function () {
+          this.$.scoresRequest.go();
+        },
+
+        resetGame: function () {
+          this.board = [
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'}
+          ];
+          this.playerMove = true;
+        },
+
+        formatDate: function (date) {
+          return date.substr(0, 10) + ' ' + date.substr(11, 5);
+        },
+
+        slotDisabled: function (value, playerMove, gameState) {
+          return !playerMove || (value !== '-') || (gameState > 0);
+        },
+
+        move: function (e) {
+          this.set('board.' + e.model.index + '.value', 'X');
+        },
+
+        getBoardIndex: function (path) {
+          var index = path.substring(path.indexOf('.') + 1);
+          index = index.substring(0, index.indexOf('.'));
+          return index;
+        },
+
+        checkRowVictory: function (slot1, slot2, slot3) {
+          if (slot1 === slot2 && slot1 === slot3) {
+            if (slot1 === 'X') { return WON; }
+            if (slot1 === 'O') { return LOST; }
           }
-        }
-      },
+          return NOT_DONE;
+        },
 
-      requestBody: function (board) {
-        return {state: board.map(function (slot) { return slot.value; }).join('')};
-      }
-    });
-  }());
-</script>
+        computeGameState: function (board) {
+          var state;
+          var i;
+          // rows
+          for (i = 0; i < 3; i++) {
+            state = this.checkRowVictory(
+              board[i * 3].value,
+              board[i * 3 + 1].value,
+              board[i * 3 + 2].value
+            );
+            if (state !== NOT_DONE) { return state; }
+          }
+
+          // columns
+          for (i = 0; i < 3; i++) {
+            state = this.checkRowVictory(
+              board[i].value,
+              board[i + 3].value,
+              board[i + 6].value
+            );
+            if (state !== NOT_DONE) { return state; }
+          }
+
+          // first diagonal
+          state = this.checkRowVictory(
+            board[0].value,
+            board[4].value,
+            board[8].value
+          );
+          if (state !== NOT_DONE) { return state; }
+
+          // second diagonal
+          state = this.checkRowVictory(
+            board[2].value,
+            board[4].value,
+            board[6].value
+          );
+          if (state !== NOT_DONE) { return state; }
+
+          if (board.filter(function (slot) {
+            return (slot.value === '-');
+          }).length === 0) {
+            return TIE;
+          }
+
+          return NOT_DONE;
+        },
+
+        showGameState: function (gameState) {
+          return gameStates[gameState];
+        },
+
+        scoreInsertRequest: function (gameState) {
+          return {outcome: gameStates[gameState]};
+        },
+
+        boardChanged: function (e) {
+          this.gameState = this.computeGameState(this.board);
+          if (this.gameState !== NOT_DONE) {
+            this.$.scoreRequest.go();
+            return;
+          }
+          if (e.path !== 'board') {
+            if (this.playerMove) {
+              this.playerMove = false;
+              this.$.moveRequest.go();
+            } else {
+              var changed = this.getBoardIndex(e.path);
+              var button = Polymer.dom(this.$.board)
+                            .querySelectorAll('paper-button')[changed];
+              Polymer.dom(button.root)
+                .querySelector('paper-ripple').simulatedRipple();
+              this.playerMove = true;
+            }
+          }
+        },
+
+        computerMoved: function (move) {
+          var slots = move.state.split('');
+          for (var i = 0; i < slots.length; i++) {
+            if (slots[i] !== this.board[i].value) {
+              this.set('board.' + i + '.value', slots[i]);
+            }
+          }
+        },
+
+        requestBody: function (board) {
+          return {
+            state: board.map(function (slot) { return slot.value; }).join('')
+          };
+        }
+      });
+    }());
+  </script>
+</dom-module>

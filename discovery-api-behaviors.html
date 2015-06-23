@@ -36,7 +36,9 @@
       _checkParameters: function () {
         // all required Parameters need to have a value before making a request
         if (!this._requiredParameters) { return true; }
-        return this._requiredParameters.filter(function (p) { return this[p] === undefined; }.bind(this)).length === 0;
+        return this._requiredParameters.filter(
+          function (p) { return this[p] === undefined; }.bind(this)
+        ).length === 0;
       },
 
       _prepareParameters: function () {
@@ -55,9 +57,9 @@
         if (!this._checkParameters()) { return; }
         this._createRequest(this._prepareParameters()).then(function (r) {
           this._setResponse(r.result);
-          this.fire("success", r.result);
+          this.fire('success', r.result);
         }.bind(this), function (e) {
-          this.fire("error", e.result.error);
+          this.fire('error', e.result.error);
         }.bind(this));
       },
     };
@@ -66,12 +68,13 @@
       properties: {
         body: {
           type: Object,
-          observer: "_parameterChanged"
+          observer: '_parameterChanged'
         }
       },
 
       _prepareParameters: function () {
-        var params = global.DiscoveryApiBehaviors.ApiRequestBehavior._prepareParameters.call(this);
+        var params = global.DiscoveryApiBehaviors
+                      .ApiRequestBehavior._prepareParameters.call(this);
 
         // Add request body to the parameters
         params.resource = this.body || {};
