@@ -18,7 +18,7 @@ that allow accessing them declaratively.
 -->
 
 <link rel="import" href="../polymer/polymer.html">
-<link rel="import" href="../google-apis/google-client-loader.html">
+<link rel="import" href="../google-apis/google-js-api.html">
 <link rel="import" href="../iron-ajax/iron-ajax.html">
 <link rel="import" href="discovery-api-behaviors.html">
 
@@ -30,12 +30,7 @@ that allow accessing them declaratively.
         url="{{_discoveryUrl(name, version, appId, apiRoot)}}"
         handle-as="json"
         last-response="{{_discoveryDoc}}"></iron-ajax>
-      <google-client-loader
-        name="[[name]]"
-        version="[[version]]"
-        app-id="[[appId]]"
-        api-root="[[apiRoot]]"
-        on-google-api-load="_apiLoaded"></google-client-loader>
+      <google-js-api on-js-api-load="_loadClient"></google-js-api>
     </template>
   </template>
 </dom-module>
@@ -171,7 +166,11 @@ that allow accessing them declaratively.
         this._createElements();
       },
 
-      _apiLoaded: function () {
+      _loadClient: function() {
+        gapi.load('client', this._doneLoadingClient.bind(this));
+      },
+
+      _doneLoadingClient: function () {
         this._apiReady = true;
         this._createElements();
       },
@@ -208,6 +207,28 @@ that allow accessing them declaratively.
             }.bind(this)
           );
         }
+
+        this._baseBehavior.properties._rootUrl = {
+          type: String,
+          value: this._discoveryDoc.rootUrl
+        };
+
+        this._generalProperties.push({
+          name: ':_rootUrl',
+          private: true,
+          type: 'string'
+        });
+
+        this._baseBehavior.properties._servicePath = {
+          type: String,
+          value: this._discoveryDoc.servicePath
+        };
+
+        this._generalProperties.push({
+          name: ':_servicePath',
+          private: true,
+          type: 'string'
+        });
 
         if (this._discoveryDoc.resources) {
           Object.keys(this._discoveryDoc.resources).forEach(
@@ -264,6 +285,16 @@ that allow accessing them declaratively.
         properties._methodName = {
           type: String,
           value: methodName
+        };
+
+        properties._path = {
+          type: String,
+          value: method.path
+        };
+
+        properties._method = {
+          type: String,
+          value: method.httpMethod
         };
 
         if (method.parameters) {
@@ -331,6 +362,16 @@ that allow accessing them declaratively.
         });
         docProperties.push({
           name: '_methodName',
+          private: true,
+          type: 'string'
+        });
+        docProperties.push({
+          name: '_path',
+          private: true,
+          type: 'string'
+        });
+        docProperties.push({
+          name: '_method',
           private: true,
           type: 'string'
         });
