@@ -8,10 +8,6 @@
         _apiName: String,
         _resourceName: String,
         _methodName: String,
-        _rootUrl: String,
-        _servicePath: String,
-        _path: String,
-        _method: String,
         response: {
           type: Object,
           readOnly: true,
@@ -25,12 +21,10 @@
       },
 
       _createRequest: function (parameters) {
-        return gapi.client.request({
-          path: this._servicePath + this._path,
-          method: this._method,
-          params: parameters,
-          root: this._rootUrl
-        });
+        var callPath = global.gapi.client[this._apiName];
+        if (this._resourceName) { callPath = callPath[this._resourceName]; }
+        callPath = callPath[this._methodName];
+        return callPath(parameters);
       },
 
       _parameterChanged: function () {
@@ -78,14 +72,14 @@
         }
       },
 
-      _createRequest: function (parameters) {
-        return gapi.client.request({
-          path: this._servicePath + this._path,
-          method: this._method,
-          params: parameters,
-          body: this.body || {},
-          root: this._rootUrl
-        });
+      _prepareParameters: function () {
+        var params = global.DiscoveryApiBehaviors
+                      .ApiRequestBehavior._prepareParameters.call(this);
+
+        // Add request body to the parameters
+        params.resource = this.body || {};
+
+        return params;
       }
     };
 
