@@ -30,12 +30,15 @@ that allow accessing them declaratively.
         url="{{_discoveryUrl(name, version, appId, apiRoot)}}"
         handle-as="json"
         last-response="{{_discoveryDoc}}"></iron-ajax>
-      <google-client-loader
-        name="[[name]]"
-        version="[[version]]"
-        app-id="[[appId]]"
-        api-root="[[apiRoot]]"
-        on-google-api-load="_apiLoaded"></google-client-loader>
+
+      <template is="dom-if" if="[[!noClient]]">
+        <google-client-loader
+          name="[[name]]"
+          version="[[version]]"
+          app-id="[[appId]]"
+          api-root="[[apiRoot]]"
+          on-google-api-load="_apiLoaded"></google-client-loader>
+      </template>
     </template>
   </template>
 </dom-module>
@@ -100,6 +103,16 @@ that allow accessing them declaratively.
         },
 
         /**
+         * Don't use the Google API Client Library for JavaScript
+         * This is useful in offline-scenarios since the client Library
+         * uses an iFrame for requests which can't be cached by service workers
+         */
+        noClient: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
          * API Key for accessing the API, necessary for most APIs if you are doing
          * unauthenticated calls
          */
@@ -152,6 +165,9 @@ that allow accessing them declaratively.
           }
         } else {
           _apis[this.name + '_' + this.version] = this;
+          if (this.noClient) {
+            this._apiReady = true;
+          }
           this._load = true;
         }
       },
@@ -207,6 +223,30 @@ that allow accessing them declaratively.
               });
             }.bind(this)
           );
+        }
+
+        if (this.noClient) {
+          this._baseBehavior.properties._rootUrl = {
+            type: String,
+            value: this._discoveryDoc.rootUrl
+          };
+
+          this._generalProperties.push({
+            name: ':_rootUrl',
+            private: true,
+            type: 'string'
+          });
+
+          this._baseBehavior.properties._servicePath = {
+            type: String,
+            value: this._discoveryDoc.servicePath
+          };
+
+          this._generalProperties.push({
+            name: ':_servicePath',
+            private: true,
+            type: 'string'
+          });
         }
 
         if (this._discoveryDoc.resources) {
@@ -266,6 +306,18 @@ that allow accessing them declaratively.
           value: methodName
         };
 
+        if (this.noClient) {
+          properties._path = {
+            type: String,
+            value: method.path
+          };
+
+          properties._method = {
+            type: String,
+            value: method.httpMethod
+          };
+        }
+
         if (method.parameters) {
           properties._parameters = {
             type: Array,
@@ -294,7 +346,11 @@ that allow accessing them declaratively.
         }
 
         if (method.request) {
-          behavior = window.DiscoveryApiBehaviors.ApiPostRequestBehavior;
+          if (this.noClient) {
+            behavior = window.DiscoveryApiBehaviors.NoClientPostRequestBehavior;
+          } else {
+            behavior = window.DiscoveryApiBehaviors.ApiPostRequestBehavior;
+          }
           docProperties.push({
             name: 'body',
             published: true,
@@ -302,7 +358,11 @@ that allow accessing them declaratively.
             desc: 'Request Body: ' + method.request.$ref
           });
         } else {
-          behavior = window.DiscoveryApiBehaviors.ApiRequestBehavior;
+          if (this.noClient) {
+            behavior = window.DiscoveryApiBehaviors.NoClientRequestBehavior;
+          } else {
+            behavior = window.DiscoveryApiBehaviors.ApiRequestBehavior;
+          }
         }
 
         docProperties.push({
@@ -318,6 +378,15 @@ that allow accessing them declaratively.
           type: 'Object',
           desc: 'The result of the latest successful request.'
         });
+
+        if (this.noClient) {
+          docProperties.push({
+            name: 'accessToken',
+            published: true,
+            type: 'String',
+            desc: 'OAuth 2.0 access token to be used for the request.'
+          });
+        }
 
         docProperties.push({
           name: '_apiName',

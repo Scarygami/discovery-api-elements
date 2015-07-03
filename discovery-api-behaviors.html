@@ -88,5 +88,74 @@
       global.DiscoveryApiBehaviors._ApiPostRequestBehavior
     ];
 
+    global.DiscoveryApiBehaviors._NoClientRequestBehavior = {
+      properties: {
+        _rootUrl: String,
+        _servicePath: String,
+        _path: String,
+        _method: String,
+        accessToken: {
+          type: String,
+          observer: '_parameterChanged'
+        }
+      },
+      ready: function () {
+        var ajax = document.createElement('iron-ajax');
+        ajax.handleAs = 'json';
+        ajax.addEventListener('response', this._onResponse.bind(this));
+        ajax.addEventListener('error', this._onError.bind(this));
+        this.ajax = ajax;
+        Polymer.dom(this.root).appendChild(ajax);
+      },
+
+      go: function () {
+        if (!this._checkParameters()) { return; }
+        this.ajax.url = this._rootUrl + this._servicePath + this._path;
+        this.ajax.method = this._method;
+        this.ajax.params = this._prepareParameters();
+
+        if (!!this.body) {
+          this.ajax.contentType = 'application/json';
+          this.ajax.body = JSON.stringify(this.body);
+        }
+
+        if (!!this.accessToken) {
+          this.ajax.headers = {
+            'Authorization': 'Bearer ' + this.accessToken
+          };
+        }
+
+        this.ajax.generateRequest();
+      },
+
+      _onResponse: function (e) {
+        this._setResponse(e.detail.response);
+        this.fire('success', e.detail.response);
+      },
+
+      _onError: function (e) {
+        this.fire('error', e.detail.error);
+      }
+    };
+
+    global.DiscoveryApiBehaviors._NoClientPostRequestBehavior = {
+      properties: {
+        body: {
+          type: Object,
+          observer: '_parameterChanged'
+        }
+      }
+    };
+
+    global.DiscoveryApiBehaviors.NoClientRequestBehavior = [
+      global.DiscoveryApiBehaviors.ApiRequestBehavior,
+      global.DiscoveryApiBehaviors._NoClientRequestBehavior
+    ];
+
+    global.DiscoveryApiBehaviors.NoClientPostRequestBehavior = [
+      global.DiscoveryApiBehaviors.NoClientRequestBehavior,
+      global.DiscoveryApiBehaviors._NoClientPostRequestBehavior
+    ];
+
   }(this));
 </script>
