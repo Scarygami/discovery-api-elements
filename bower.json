@@ -10,7 +10,9 @@
     "Discovery",
     "API",
     "Polymer",
-    "Google"
+    "Google",
+    "web-components",
+    "web-component"
   ],
   "license": "Apache 2.0",
   "homepage": "https://github.com/Scarygami/discovery-api-elements",
