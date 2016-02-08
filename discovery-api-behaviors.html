@@ -253,7 +253,14 @@
       },
 
       _onError: function (e) {
-        this.fire('error', e.detail.error);
+        if (
+          e.detail.request.xhr.response &&
+          e.detail.request.xhr.response.error
+        ) {
+          this.fire('error', e.detail.request.xhr.response.error);
+        } else {
+          this.fire('error', e.detail.error);
+        }
       }
     };
 
