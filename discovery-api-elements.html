@@ -212,7 +212,7 @@ that allow accessing them declaratively.
 
         this.elements = [];
 
-        if (this.apiKey) {
+        if (this.apiKey && !this.noClient) {
           global.gapi.client.setApiKey(this.apiKey);
         }
 
