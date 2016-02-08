@@ -27,7 +27,7 @@ that allow accessing them declaratively.
     <template is="dom-if" if="{{_load}}">
       <iron-ajax
         auto
-        url="{{_discoveryUrl(name, version, appId, apiRoot)}}"
+        url="{{_discoveryUrl(name, version, appId, apiRoot, docUrl)}}"
         handle-as="json"
         last-response="{{_discoveryDoc}}"></iron-ajax>
 
@@ -44,7 +44,7 @@ that allow accessing them declaratively.
 </dom-module>
 
 <script>
-  (function () {
+  (function (global) {
 
     var _apis = {};
 
@@ -98,6 +98,18 @@ that allow accessing them declaratively.
          * Overrides 'appId' if both are specified.
          */
         apiRoot: {
+          type: String,
+          value: ''
+        },
+
+        /**
+         * Direct URL of the discover document
+         * Overrides 'appId' and 'apiRoot'
+         *
+         * In most cases this will only work properly when also using
+         * the 'noClient' option
+         */
+        docUrl: {
           type: String,
           value: ''
         },
@@ -172,7 +184,10 @@ that allow accessing them declaratively.
         }
       },
 
-      _discoveryUrl: function (name, version, appId, apiRoot) {
+      _discoveryUrl: function (name, version, appId, apiRoot, docUrl) {
+        if (!!docUrl) {
+          return docUrl;
+        }
         var url = '/discovery/v1/apis/' + name + '/' + version + '/rest';
         if (appId) {
           return 'https://' + appId + '.appspot.com/_ah/api' + url;
@@ -198,7 +213,7 @@ that allow accessing them declaratively.
         this.elements = [];
 
         if (this.apiKey) {
-          gapi.client.setApiKey(this.apiKey);
+          global.gapi.client.setApiKey(this.apiKey);
         }
 
         this._baseBehavior = {
@@ -522,5 +537,5 @@ that allow accessing them declaratively.
         this.fire('elements-ready');
       }
     });
-  }());
+  }(this));
 </script>
