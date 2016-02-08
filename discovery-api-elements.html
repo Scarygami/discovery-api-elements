@@ -238,6 +238,11 @@ that allow accessing them declaratively.
               });
             }.bind(this)
           );
+
+          this._baseBehavior.properties._globalParameters = {
+            type: Array,
+            value: Object.keys(this._discoveryDoc.parameters)
+          };
         }
 
         this._baseBehavior.properties._rootUrl = {

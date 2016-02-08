@@ -49,13 +49,15 @@
 
       _prepareParameters: function () {
         var params = {};
-        if (this._parameters) {
-          this._parameters.forEach(function (param) {
-            if (this[param]) {
-              params[param] = this[param];
-            }
-          }.bind(this));
-        }
+        var allParams = Array.prototype.concat(
+          this._parameters || [],
+          this._globalParameters || []
+        );
+        allParams.forEach(function (param) {
+          if (this[param]) {
+            params[param] = this[param];
+          }
+        }.bind(this));
         return params;
       },
 
