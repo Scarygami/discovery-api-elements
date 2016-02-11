@@ -219,6 +219,13 @@
         }
         this.ajax.url = url;
 
+        if (!!this._requiredParameters) {
+          this._requiredParameters.forEach(function (p) {
+            var regExp = new RegExp('\\{\\+?' + p + '\\}', 'gi');
+            this.ajax.url = this.ajax.url.replace(regExp, this[p]);
+          }.bind(this));
+        }
+
         this.ajax.method = this._method;
         this.ajax.params = this._prepareParameters();
 
