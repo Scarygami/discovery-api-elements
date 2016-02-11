@@ -272,20 +272,20 @@ that allow accessing them declaratively.
             function (resourceName) {
               var resource = this._discoveryDoc.resources[resourceName];
               if (resource.methods) {
-                this._createMethodElements(resourceName, resource.methods);
+                this._createMethodElements(resourceName, resource, resource.methods);
               }
             }.bind(this)
           );
         }
 
         if (this._discoveryDoc.methods) {
-          this._createMethodElements(null, this._discoveryDoc.methods);
+          this._createMethodElements(null, null, this._discoveryDoc.methods);
         }
 
         this._finish();
       },
 
-      _createMethodElements: function (resourceName, methods) {
+      _createMethodElements: function (resourceName, resource, methods) {
         Object.keys(methods).forEach(
           function (methodName) {
             var method = methods[methodName];
@@ -313,6 +313,17 @@ that allow accessing them declaratively.
 
           }.bind(this)
         );
+
+        if (resource && resource.resources) {
+          Object.keys(resource.resources).forEach(
+            function (subResourceName) {
+              var subResource = resource.resources[subResourceName];
+              if (subResource.methods) {
+                this._createMethodElements(resourceName + '-' + subResourceName, subResource, subResource.methods);
+              }
+            }.bind(this)
+          );
+        }
       },
 
       _createMethodElement: function (
