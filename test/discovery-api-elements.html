@@ -10,9 +10,10 @@
     <link rel="import" href="../discovery-api-elements.html">
   </head>
   <body>
+  <discovery-api-elements name="test" version="v1" doc-url="test-v1.json" no-client></discovery-api-elements>
     <test-fixture id="test">
       <template>
-        <discovery-api-elements name="drive" version="v3" doc-url="drive-v3.json" no-client>
+        <discovery-api-elements name="test" version="v1" doc-url="test-v1.json" no-client></discovery-api-elements>
       </template>
     </test-fixture>
 
@@ -36,7 +37,7 @@
           test('elements have been loaded', function (done) {
             elem.addEventListener('elements-ready', function () {
               expect(elem.elements).to.be.an('array');
-              expect(elem.elements).to.have.lengthOf(36);
+              expect(elem.elements).to.have.lengthOf(4);
               done();
             });
           });
@@ -44,9 +45,10 @@
           test('elements have been registered', function (done) {
             elem.addEventListener('elements-ready', function () {
               expect(function () {
-                Polymer({
-                  is: 'drive-about-get'
-                });
+                Polymer({is: 'test-test-get'});
+                Polymer({is: 'test-test-list'});
+                Polymer({is: 'test-test-post'});
+                Polymer({is: 'test-test-post-upload'});
               }).to.throw();
               done();
             });
