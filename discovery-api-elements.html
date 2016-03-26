@@ -166,8 +166,10 @@ that allow accessing them declaratively.
         if (!!api) {
           if (api.loaded) {
             // Elements have already been created by another element
-            this.elements = api.elements;
-            this._finish();
+            this.async(function () {
+              this.elements = api.elements;
+              this._finish();
+            });
           } else {
             // Elements are already being created by another element
             api.addEventListener('elements-ready', function () {
