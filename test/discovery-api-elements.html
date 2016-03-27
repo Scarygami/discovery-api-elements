@@ -5,12 +5,12 @@
 
     <script src="../../webcomponentsjs/webcomponents.js"></script>
     <script src="../../web-component-tester/browser.js"></script>
+    <script src="mock-api-server.js"></script>
 
     <link rel="import" href="../../promise-polyfill/promise-polyfill.html">
     <link rel="import" href="../discovery-api-elements.html">
   </head>
   <body>
-  <discovery-api-elements name="test" version="v1" doc-url="test-v1.json" no-client></discovery-api-elements>
     <test-fixture id="test">
       <template>
         <discovery-api-elements name="test" version="v1" doc-url="test-v1.json" no-client></discovery-api-elements>
@@ -22,9 +22,16 @@
 
       suite('<discovery-api-elements>', function () {
         var elem;
+        var server;
 
         setup(function () {
+          server = createMockApiServer();
+
           elem = fixture('test');
+        });
+
+        teardown(function() {
+          server.restore();
         });
 
         suite('basic tests', function () {
