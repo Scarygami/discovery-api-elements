@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>discovery-api-elements Demo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+    <script src="../../webcomponentsjs/webcomponents-lite.min.js"></script>
+
+    <link rel="import" href="../discovery-api-elements.html">
+    <link rel="import" href="../../iron-flex-layout/classes/iron-flex-layout.html">
+    <link rel="import" href="../../paper-header-panel/paper-header-panel.html">
+    <link rel="import" href="../../paper-toolbar/paper-toolbar.html">
+    <link rel="import" href="../../iron-icons/iron-icons.html">
+    <link rel="import" href="../../paper-button/paper-button.html">
+    <link rel="import" href="../../paper-material/paper-material.html">
+    <link rel="import" href="../../google-signin/google-signin.html">
+    <link rel="import" href="../../paper-input/paper-textarea.html">
+    <link rel="import" href="../../paper-input/paper-input.html">
+
+    <style is="custom-style">
+      main {
+        padding: 10px;
+      }
+
+      .user img {
+        height: 40px;
+        width: 40px;
+        margin-left: 10px;
+        margin-right: 10px;
+        border-radius: 50%;
+      }
+
+      paper-material {
+        padding: 5px 10px;
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body class="fullbleed">
+    <template is="dom-bind" id="app">
+      <discovery-api-elements
+        name="drive"
+        version="v2"
+        loaded="{{elementsReady}}"
+        ></discovery-api-elements>
+
+      <paper-header-panel>
+        <paper-toolbar>
+          <span class="title flex">drive-sample</span>
+          <div hidden$="[[!signedIn]]" class="user layout horizontal center">
+            <span>[[user.name]]</span>
+            <img src$="[[user.image]]">
+          </div>
+          <google-signin
+            client-id="390037016754-ip34lpdqk9m0ovn1nal65h61s5jiknut.apps.googleusercontent.com"
+            scopes="email profile https://www.googleapis.com/auth/drive.file"
+            is-authorized="{{signedIn}}"
+            on-is-authorized-changed="_updateUser"></google-signin>
+        </paper-toolbar>
+
+        <main>
+          <div hidden$="[[_started(elementsReady, signedIn)]]">
+            <h1>Please sign in to get started</h1>
+          </div>
+
+          <div hidden$="[[!_started(elementsReady, signedIn)]]">
+            <drive-files-insert-upload
+              body="[[_computeBody(filename)]]"
+              data="[[text]]"
+              mime-type="text/plain"
+              id="upload"
+            ></drive-files-insert-upload>
+            <paper-material elevation="2">
+              <div>
+                <paper-textarea label="Write some text here" value="{{text}}"></paper-textarea>
+                <div class="layout horizontal center">
+                  <paper-input label="File name" value="{{filename}}"></paper-input>
+                  <paper-button raised on-tap="_store">Store text to Drive</paper-button>
+                </div>
+              </div>
+            </paper-material>
+          </div>
+        </main>
+    </template>
+
+    <script>
+      (function () {
+        var app = document.getElementById('app');
+
+        app.filename = 'demo.txt';
+
+        app._computeBody = function (filename) {
+          if (!filename.trim()) {
+            return null;
+          }
+          return {
+            title: filename,
+            mimeType: 'text/plain'
+          };
+        };
+
+        app._started = function (elementsReady, signedIn) {
+          return elementsReady && signedIn;
+        };
+
+        app._updateUser = function(e) {
+          var signedIn = e.detail.value;
+          if (!signedIn) {
+            this.user = null;
+            return;
+          }
+
+          var profile = gapi.auth2.getAuthInstance()
+                        .currentUser.get().getBasicProfile();
+          this.user = {
+            name: profile.getName(),
+            image: profile.getImageUrl()
+          };
+        };
+
+        app._store = function () {
+          this.$.upload.go();
+        };
+
+      }());
+    </script>
+  </body>
+</html>

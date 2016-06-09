@@ -1,0 +1,561 @@
+<!--
+`discovery-api-elements` will automatically create elements for Discovery-based APIS
+that allow accessing them declaratively.
+
+##### Example
+
+    <discovery-api-elements name="plus" version="v1"></discovery-api-elements>
+
+    <plus-activities-list
+      user-id="+GerwinSturm"
+      collection="public"
+      response="{{data}}" auto></plus-activities-list>
+
+@element discovery-api-elements
+@status alpha
+@homepage https://github.com/Scarygami/discovery-api-elements/
+@demo demo/index.html Simple demo
+@demo demo/demo-drive.html File upload demo
+@demo demo/demo-endpoints.html Google Cloud Endpoints demo
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../google-apis/google-client-loader.html">
+<link rel="import" href="../iron-ajax/iron-ajax.html">
+<link rel="import" href="discovery-api-behaviors.html">
+
+<dom-module id="discovery-api-elements">
+  <template>
+    <template is="dom-if" if="{{_load}}">
+      <iron-ajax
+        auto
+        url="{{_discoveryUrl(name, version, appId, apiRoot, docUrl)}}"
+        handle-as="json"
+        last-response="{{_discoveryDoc}}"></iron-ajax>
+
+      <template is="dom-if" if="[[!noClient]]">
+        <google-client-loader
+          name="[[name]]"
+          version="[[version]]"
+          app-id="[[appId]]"
+          api-root="[[apiRoot]]"
+          on-google-api-load="_apiLoaded"></google-client-loader>
+      </template>
+    </template>
+  </template>
+</dom-module>
+
+<script>
+  (function (global) {
+
+    var _apis = {};
+
+    function parameterType(apiType) {
+      // TODO extend
+      switch (apiType) {
+        case 'string': return String;
+        case 'integer': return Number;
+      }
+      return String;
+    }
+
+    function camelToDashCase(camel) {
+      return camel.replace(/([a-z][A-Z])/g, function (g) {
+        return g[0] + '-' + g[1].toLowerCase();
+      });
+    }
+
+    Polymer({
+      is: 'discovery-api-elements',
+      properties: {
+        /**
+         * Name of the API to load, e.g. 'urlshortener'.
+         *
+         * You can find the full list of APIs on the
+         * <a href="https://developers.google.com/apis-explorer"> Google APIs
+         * Explorer</a>.
+         * @required
+         */
+        name: String,
+
+
+        /**
+         * Version of the API to load, e.g. 'v1'.
+         * @required
+         */
+        version: String,
+
+        /**
+         * App Engine application ID for loading a Google Cloud Endpoints API.
+         */
+        appId: {
+          type: String,
+          value: ''
+        },
+
+        /**
+         * Root URL where to load the API from, e.g. 'http://host/apis'.
+         * For App Engine dev server this would be something like:
+         * 'http://localhost:8080/_ah/api'.
+         * Overrides 'appId' if both are specified.
+         */
+        apiRoot: {
+          type: String,
+          value: ''
+        },
+
+        /**
+         * Direct URL of the discover document
+         * Overrides 'appId' and 'apiRoot'
+         *
+         * In most cases this will only work properly when also using
+         * the 'noClient' option
+         */
+        docUrl: {
+          type: String,
+          value: ''
+        },
+
+        /**
+         * Don't use the Google API Client Library for JavaScript
+         * This is useful in offline-scenarios since the client Library
+         * uses an iFrame for requests which can't be cached by service workers
+         */
+        noClient: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+         * API Key for accessing the API, necessary for most APIs if you are doing
+         * unauthenticated calls
+         */
+        apiKey: String,
+
+        /**
+         * Descriptor of generated elements to generate docs from
+         */
+        elements: {
+          type: Object,
+          notify: true
+        },
+
+        /**
+         * True when all elements for the specified API have been created
+         */
+        loaded: {
+          type: Boolean,
+          value: false,
+          readOnly: true,
+          notify: true
+        },
+
+        _apiReady: Boolean,
+        _load: {
+          type: Boolean,
+          value: false
+        },
+        _discoveryDoc: {
+          type: Object,
+          observer: '_discoveryDocLoaded'
+        },
+        _baseBehavior: Object,
+        _generalProperties: Array
+      },
+
+      attached: function () {
+        var api = _apis[this.name + '_' + this.version];
+        if (!!api) {
+          if (api.loaded) {
+            // Elements have already been created by another element
+            this.async(function () {
+              this.elements = api.elements;
+              this._finish();
+            });
+          } else {
+            // Elements are already being created by another element
+            api.addEventListener('elements-ready', function () {
+              this.elements = api.elements;
+              this._finish();
+            }.bind(this));
+          }
+        } else {
+          _apis[this.name + '_' + this.version] = this;
+          if (this.noClient) {
+            this._apiReady = true;
+          }
+          this._load = true;
+        }
+      },
+
+      _discoveryUrl: function (name, version, appId, apiRoot, docUrl) {
+        if (!!docUrl) {
+          return docUrl;
+        }
+        var url = '/discovery/v1/apis/' + name + '/' + version + '/rest';
+        if (appId) {
+          return 'https://' + appId + '.appspot.com/_ah/api' + url;
+        }
+        if (apiRoot) {
+          return apiRoot + url;
+        }
+        return 'https://www.googleapis.com' + url;
+      },
+
+      _discoveryDocLoaded: function () {
+        this._createElements();
+      },
+
+      _apiLoaded: function () {
+        this._apiReady = true;
+        this._createElements();
+      },
+
+      _createElements: function () {
+        if (!this._apiReady || !this._discoveryDoc) { return; }
+
+        this.elements = [];
+
+        if (this.apiKey && !this.noClient) {
+          global.gapi.client.setApiKey(this.apiKey);
+        }
+
+        this._baseBehavior = {
+          properties: {}
+        };
+        this._generalProperties = [];
+
+        if (this._discoveryDoc.parameters) {
+          Object.keys(this._discoveryDoc.parameters).forEach(
+            function (parameterName) {
+              var parameter = this._discoveryDoc.parameters[parameterName];
+              this._baseBehavior.properties[parameterName] = {
+                type: parameterType(parameter.type),
+                observer: '_parameterChanged'
+              };
+
+              this._generalProperties.push({
+                name: parameterName,
+                published: true,
+                type: parameter.type,
+                desc: parameter.description
+              });
+            }.bind(this)
+          );
+
+          this._baseBehavior.properties._globalParameters = {
+            type: Array,
+            value: Object.keys(this._discoveryDoc.parameters)
+          };
+        }
+
+        this._baseBehavior.properties._rootUrl = {
+          type: String,
+          value: this._discoveryDoc.rootUrl
+        };
+
+        this._generalProperties.push({
+          name: ':_rootUrl',
+          private: true,
+          type: 'string'
+        });
+
+        this._baseBehavior.properties._servicePath = {
+          type: String,
+          value: this._discoveryDoc.servicePath
+        };
+
+        this._generalProperties.push({
+          name: ':_servicePath',
+          private: true,
+          type: 'string'
+        });
+
+        if (this._discoveryDoc.resources) {
+          Object.keys(this._discoveryDoc.resources).forEach(
+            function (resourceName) {
+              var resource = this._discoveryDoc.resources[resourceName];
+              if (resource.methods) {
+                this._createMethodElements(resourceName, resource, resource.methods);
+              }
+            }.bind(this)
+          );
+        }
+
+        if (this._discoveryDoc.methods) {
+          this._createMethodElements(null, null, this._discoveryDoc.methods);
+        }
+
+        this._finish();
+      },
+
+      _createMethodElements: function (resourceName, resource, methods) {
+        Object.keys(methods).forEach(
+          function (methodName) {
+            var method = methods[methodName];
+            this._createMethodElement(
+              resourceName,
+              methodName,
+              method,
+              false
+            );
+
+            if (method.supportsMediaUpload) {
+              if (
+                method.mediaUpload &&
+                method.mediaUpload.protocols &&
+                method.mediaUpload.protocols.simple
+              ) {
+                this._createMethodElement(
+                  resourceName,
+                  methodName,
+                  method,
+                  true
+                );
+              }
+            }
+
+          }.bind(this)
+        );
+
+        if (resource && resource.resources) {
+          Object.keys(resource.resources).forEach(
+            function (subResourceName) {
+              var subResource = resource.resources[subResourceName];
+              if (subResource.methods) {
+                this._createMethodElements(resourceName + '-' + subResourceName, subResource, subResource.methods);
+              }
+            }.bind(this)
+          );
+        }
+      },
+
+      _createMethodElement: function (
+        resourceName, methodName, method, upload
+      ) {
+        var properties = {};
+        var docProperties = [];
+        var behavior;
+
+        var elementName = this.name;
+        if (!!resourceName) {
+          elementName = elementName + '-' + resourceName;
+        }
+        elementName = elementName + '-' + methodName;
+        if (upload) {
+          elementName = elementName + '-upload';
+        }
+        elementName = camelToDashCase(elementName);
+
+        properties._apiName = {
+          type: String,
+          value: this.name
+        };
+
+        properties._resourceName = {
+          type: String,
+          value: resourceName
+        };
+
+        properties._methodName = {
+          type: String,
+          value: methodName
+        };
+
+        if (this.noClient) {
+          properties._path = {
+            type: String,
+            value: method.path
+          };
+
+          properties._method = {
+            type: String,
+            value: method.httpMethod
+          };
+        }
+
+        if (upload) {
+          properties._path = {
+            type: String,
+            value: method.mediaUpload.protocols.simple.path
+          };
+
+          properties._method = {
+            type: String,
+            value: method.httpMethod
+          };
+        }
+
+        if (method.parameters) {
+          properties._parameters = {
+            type: Array,
+            value: Object.keys(method.parameters)
+          };
+          properties._requiredParameters = {
+            type: Array,
+            value: properties._parameters.value.filter(
+              function (p) { return method.parameters[p].required; }
+            )
+          };
+          Object.keys(method.parameters).forEach(function (parameterName) {
+            var parameter = method.parameters[parameterName];
+            properties[parameterName] = {
+              type: parameterType(parameter.type),
+              observer: '_parameterChanged'
+            };
+
+            docProperties.push({
+              name: parameterName,
+              published: true,
+              type: parameter.type,
+              desc: parameter.description
+            });
+          });
+        }
+
+        if (method.request) {
+          docProperties.push({
+            name: 'body',
+            published: true,
+            type: 'Object',
+            desc: 'Request Body: ' + method.request.$ref
+          });
+
+          if (upload) {
+            docProperties.push({
+              name: 'data',
+              published: true,
+              type: 'String',
+              desc: 'Raw File Data to be uploaded'
+            });
+
+            docProperties.push({
+              name: 'mimeType',
+              published: true,
+              type: 'String',
+              desc: 'Mime type of the uploaded data. ' +
+                    'Defaults to application/octet-stream.'
+            });
+          }
+
+          if (upload) {
+            if (this.noClient) {
+              behavior = window.DiscoveryApiBehaviors
+                           .NoClientUploadRequestBehavior;
+            } else {
+              behavior = window.DiscoveryApiBehaviors.ApiUploadRequestBehavior;
+            }
+          } else {
+            if (this.noClient) {
+              behavior = window.DiscoveryApiBehaviors
+                           .NoClientPostRequestBehavior;
+            } else {
+              behavior = window.DiscoveryApiBehaviors.ApiPostRequestBehavior;
+            }
+          }
+        } else {
+          if (this.noClient) {
+            behavior = window.DiscoveryApiBehaviors.NoClientRequestBehavior;
+          } else {
+            behavior = window.DiscoveryApiBehaviors.ApiRequestBehavior;
+          }
+        }
+
+        docProperties.push({
+          name: 'auto',
+          published: true,
+          type: 'boolean',
+          desc: 'Automatically execute the request ' +
+                'if one of the parameter changes.'
+        });
+        docProperties.push({
+          name: 'response',
+          published: true,
+          type: 'Object',
+          desc: 'The result of the latest successful request.'
+        });
+
+        if (this.noClient) {
+          docProperties.push({
+            name: 'accessToken',
+            published: true,
+            type: 'String',
+            desc: 'OAuth 2.0 access token to be used for the request.'
+          });
+        }
+
+        docProperties.push({
+          name: '_apiName',
+          private: true,
+          type: 'string'
+        });
+        docProperties.push({
+          name: '_resourceName',
+          private: true,
+          type: 'string'
+        });
+        docProperties.push({
+          name: '_methodName',
+          private: true,
+          type: 'string'
+        });
+        docProperties.push({
+          name: 'go',
+          type: 'Function',
+          function: true,
+          desc: 'Execute the request.'
+        });
+
+        docProperties.push({
+          name: '_createRequest',
+          type: 'Function',
+          function: true,
+          private: true
+        });
+
+        docProperties.push({
+          name: '_parameterChanged',
+          type: 'Function',
+          function: true,
+          private: true
+        });
+
+        docProperties.push({
+          name: '_checkParameters',
+          type: 'Function',
+          function: true,
+          private: true
+        });
+
+        docProperties.push({
+          name: '_prepareParameters',
+          type: 'Function',
+          function: true,
+          private: true
+        });
+
+        Polymer({
+          is: elementName,
+          properties: properties,
+          behaviors: [behavior, this._baseBehavior]
+        });
+
+        this.push('elements', {
+          is: elementName,
+          desc: method.description,
+          properties: docProperties.concat(this._generalProperties)
+        });
+      },
+
+      _finish: function () {
+        this._setLoaded(true);
+
+        /**
+         * Fired when all the elements have been created and are ready to be used.
+         * @event elements-ready
+         */
+        this.fire('elements-ready');
+      }
+    });
+  }(this));
+</script>

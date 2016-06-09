@@ -1,0 +1,329 @@
+<link rel="import" href="../../polymer/polymer.html">
+
+<link rel="import" href="../discovery-api-elements.html">
+<link rel="import" href="../../iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../../paper-header-panel/paper-header-panel.html">
+<link rel="import" href="../../paper-toolbar/paper-toolbar.html">
+<link rel="import" href="../../iron-icons/iron-icons.html">
+<link rel="import" href="../../paper-button/paper-button.html">
+<link rel="import" href="../../paper-material/paper-material.html">
+<link rel="import" href="../../google-signin/google-signin.html">
+
+<dom-module id="tic-tac-toe">
+  <style>
+    :host {
+      @apply(--layout-fit);
+      font-family: 'RobotoDraft','Roboto',arial,sans-serif;
+    }
+
+    paper-toolbar [title] {
+      font-weight: bold;
+      font-size: 1.2em;
+      @apply(--layout-flex);
+    }
+
+    main {
+      padding: 10px;
+    }
+
+    .user {
+      @apply(--layout-horizontal);
+      @apply(--layout-center);
+    }
+
+    .user img {
+      height: 40px;
+      width: 40px;
+      margin-left: 10px;
+      margin-right: 10px;
+      border-radius: 50%;
+    }
+
+    paper-material {
+      padding: 5px 10px;
+      margin-bottom: 20px;
+    }
+
+    paper-material header {
+      margin-bottom: 5px;
+      border-bottom: 1px solid #CCC;
+      font-size: 1.2em;
+    }
+
+    #board {
+      min-width: 310px;
+      max-width: 310px;
+      width: 310px;
+      margin: auto;
+      @apply(--layout-horizontal);
+      @apply(--layout-center-center);
+      @apply(--layout-wrap);
+    }
+
+    .slot {
+      width: 100px;
+      height: 100px;
+      border: 1px solid black;
+      margin: 0;
+      @apply(--layout-horizontal);
+      @apply(--layout-center-center);
+    }
+
+  </style>
+  <template>
+    <discovery-api-elements
+      name="tictactoe"
+      version="v1"
+      app-id="dart-endpoints"
+      loaded="{{elementsReady}}"
+      ></discovery-api-elements>
+
+    <paper-header-panel>
+      <paper-toolbar>
+        <span title flex>polymer-tic-tac-toe</span>
+        <div hidden$="[[!signedIn]]" class="user">
+          <span>[[user.name]]</span>
+          <img src$="[[user.image]]">
+        </div>
+        <google-signin
+          client-id="390037016754-ip34lpdqk9m0ovn1nal65h61s5jiknut.apps.googleusercontent.com"
+          scopes="email profile"
+          signed-in="{{signedIn}}"></google-signin>
+      </paper-toolbar>
+
+      <main>
+        <div hidden$="[[signedIn]]">
+          <h1>Please sign in to play</h1>
+        </div>
+
+        <div hidden$="[[!signedIn]]">
+          <paper-material elevation="2">
+
+            <tictactoe-board-getmove
+              id="moveRequest"
+              body="[[requestBody(board, board.*)]]"
+              response="{{computerMove}}"><tictactoe-board-getmove>
+
+            <div id="board">
+              <template is="dom-repeat" items="[[board]]">
+                <paper-button
+                  class="slot"
+                  on-tap="move"
+                  disabled$="[[slotDisabled(item.value, playerMove, gameState)]]">[[item.value]]</paper-button>
+              </template>
+              <div>[[showGameState(gameState)]]</div>
+
+              <tictactoe-scores-insert body="[[scoreInsertRequest(gameState)]]" id="scoreRequest" on-success="getScores"></tictactoe-scores-insert>
+
+              <paper-button on-tap="resetGame">New game</paper-button>
+            </div>
+          </paper-material>
+
+          <tictactoe-scores-list response="{{scores}}" id="scoresRequest"></tictactoe-scores-list>
+          <paper-material elevation="2">
+            <header>Recent Games</header>
+            <template is="dom-repeat" items="[[scores.items]]">
+              <div><span>[[formatDate(item.played)]]</span> - <span>[[item.outcome]]</span></div>
+            </template>
+          </paper-material>
+        </div>
+      </main>
+    </paper-header-panel>
+  </template>
+
+  <script>
+    (function () {
+
+      var gameStates = ['', 'WON', 'LOST', 'TIE'];
+      var NOT_DONE = 0;
+      var WON = 1;
+      var LOST = 2;
+      var TIE = 3;
+
+      Polymer({
+        is: 'tic-tac-toe',
+
+        properties: {
+          signedIn: {
+            type: Boolean,
+            observer: 'loadHandler'
+          },
+          elementsReady: {
+            type: Boolean,
+            observer: 'loadHandler'
+          },
+          user: Object,
+          scores: Object,
+          board: Array,
+          playerMove: Boolean,
+          computerMove: {
+            type: Object,
+            observer: 'computerMoved'
+          },
+          gameState: Number
+        },
+
+        observers: [
+          'boardChanged(board.*)'
+        ],
+
+        loadHandler: function () {
+          if (this.signedIn && this.elementsReady) {
+            var profile = gapi.auth2.getAuthInstance()
+                          .currentUser.get().getBasicProfile();
+            this.user = {
+              name: profile.getName(),
+              image: profile.getImageUrl()
+            };
+            this.initialise();
+          } else {
+            this.user = undefined;
+            this.scores = undefined;
+          }
+        },
+
+        initialise: function () {
+          this.getScores();
+          this.resetGame();
+        },
+
+        getScores: function () {
+          this.$.scoresRequest.go();
+        },
+
+        resetGame: function () {
+          this.board = [
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'},
+            {value: '-'}
+          ];
+          this.playerMove = true;
+        },
+
+        formatDate: function (date) {
+          return date.substr(0, 10) + ' ' + date.substr(11, 5);
+        },
+
+        slotDisabled: function (value, playerMove, gameState) {
+          return !playerMove || (value !== '-') || (gameState > 0);
+        },
+
+        move: function (e) {
+          this.set('board.' + e.model.index + '.value', 'X');
+        },
+
+        getBoardIndex: function (path) {
+          var index = path.substring(path.indexOf('.') + 1);
+          index = index.substring(0, index.indexOf('.'));
+          return index;
+        },
+
+        checkRowVictory: function (slot1, slot2, slot3) {
+          if (slot1 === slot2 && slot1 === slot3) {
+            if (slot1 === 'X') { return WON; }
+            if (slot1 === 'O') { return LOST; }
+          }
+          return NOT_DONE;
+        },
+
+        computeGameState: function (board) {
+          var state;
+          var i;
+          // rows
+          for (i = 0; i < 3; i++) {
+            state = this.checkRowVictory(
+              board[i * 3].value,
+              board[i * 3 + 1].value,
+              board[i * 3 + 2].value
+            );
+            if (state !== NOT_DONE) { return state; }
+          }
+
+          // columns
+          for (i = 0; i < 3; i++) {
+            state = this.checkRowVictory(
+              board[i].value,
+              board[i + 3].value,
+              board[i + 6].value
+            );
+            if (state !== NOT_DONE) { return state; }
+          }
+
+          // first diagonal
+          state = this.checkRowVictory(
+            board[0].value,
+            board[4].value,
+            board[8].value
+          );
+          if (state !== NOT_DONE) { return state; }
+
+          // second diagonal
+          state = this.checkRowVictory(
+            board[2].value,
+            board[4].value,
+            board[6].value
+          );
+          if (state !== NOT_DONE) { return state; }
+
+          if (board.filter(function (slot) {
+            return (slot.value === '-');
+          }).length === 0) {
+            return TIE;
+          }
+
+          return NOT_DONE;
+        },
+
+        showGameState: function (gameState) {
+          return gameStates[gameState];
+        },
+
+        scoreInsertRequest: function (gameState) {
+          return {outcome: gameStates[gameState]};
+        },
+
+        boardChanged: function (e) {
+          this.gameState = this.computeGameState(this.board);
+          if (this.gameState !== NOT_DONE) {
+            this.$.scoreRequest.go();
+            return;
+          }
+          if (e.path !== 'board') {
+            if (this.playerMove) {
+              this.playerMove = false;
+              this.$.moveRequest.go();
+            } else {
+              var changed = this.getBoardIndex(e.path);
+              var button = Polymer.dom(this.$.board)
+                            .querySelectorAll('paper-button')[changed];
+              Polymer.dom(button.root)
+                .querySelector('paper-ripple').simulatedRipple();
+              this.playerMove = true;
+            }
+          }
+        },
+
+        computerMoved: function (move) {
+          var slots = move.state.split('');
+          for (var i = 0; i < slots.length; i++) {
+            if (slots[i] !== this.board[i].value) {
+              this.set('board.' + i + '.value', slots[i]);
+            }
+          }
+        },
+
+        requestBody: function (board) {
+          return {
+            state: board.map(function (slot) { return slot.value; }).join('')
+          };
+        }
+      });
+    }());
+  </script>
+</dom-module>

@@ -1,0 +1,51 @@
+{
+  "name": "discovery-api-elements",
+  "authors": [
+    "Gerwin Sturm <scarygami@gmail.com>"
+  ],
+  "description": "Automatic Polymer elements to access Discovery-based APIs",
+  "main": "discovery-api-elements.html",
+  "keywords": [
+    "Discovery",
+    "API",
+    "Polymer",
+    "Google",
+    "web-components",
+    "web-component"
+  ],
+  "license": "Apache 2.0",
+  "homepage": "https://github.com/Scarygami/discovery-api-elements",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.0.0",
+    "google-apis": "GoogleWebComponents/google-apis#^1.0.0",
+    "iron-ajax": "PolymerElements/iron-ajax#^1.0.0"
+  },
+  "devDependencies": {
+    "google-signin": "GoogleWebComponents/google-signin#^1.0.0",
+    "paper-header-panel": "PolymerElements/paper-header-panel#^1.0.0",
+    "paper-toolbar": "PolymerElements/paper-toolbar#^1.0.0",
+    "paper-button": "PolymerElements/paper-button#^1.0.0",
+    "paper-material": "PolymerElements/paper-material#^1.0.0",
+    "iron-flex-layout": "PolymerElements/iron-flex-layout#^1.0.0",
+    "paper-input": "PolymerElements/paper-input#^1.0.0",
+    "web-component-tester": "Polymer/web-component-tester#^4.0.0",
+    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0"
+  },
+  "_release": "e980df49d7",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "e980df49d73d6212feacff31acbada68baabb6f8"
+  },
+  "_source": "git://github.com/Scarygami/discovery-api-elements.git",
+  "_target": "master",
+  "_originalSource": "Scarygami/discovery-api-elements",
+  "_direct": true
+}

@@ -1,0 +1,27 @@
+<link rel="import" href="../../polymer/polymer.html">
+<link rel="import" href="../discovery-api-elements.html">
+
+<dom-module id="demo-app">
+  <template>
+    <discovery-api-elements
+      name="plus" version="v1"
+      api-key="AIzaSyD1t60BBZsM2ow9swI23XTDSPNlPsuW9os"></discovery-api-elements>
+
+    <plus-activities-list
+      user-id="+GerwinSturm"
+      collection="public"
+      response="{{data}}" auto></plus-activities-list>
+
+    <template is="dom-repeat" items="[[data.items]]">
+      <span>[[item.published]]</span> <a href$="[[item.url]]">[[item.title]]</a><br>
+    </template>
+  </template>
+
+  <script>
+    (function () {
+      Polymer({
+        is: 'demo-app'
+      });
+    }());
+  </script>
+</dom-module>
